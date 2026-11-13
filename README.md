@@ -16,14 +16,6 @@ A Tinder-style Android app where friend groups vote **Hot** or **Not** on each o
 
 ---
 
-## Screenshots
-
-| Welcome | Dashboard | Swipe | Rankings |
-|:---:|:---:|:---:|:---:|
-| <img src="docs/screenshots/welcome.png" width="200"/> | <img src="docs/screenshots/dashboard.png" width="200"/> | <img src="docs/screenshots/swipe.png" width="200"/> | <img src="docs/screenshots/rankings.png" width="200"/> |
-
-> Add your own screenshots to [`docs/screenshots/`](docs/screenshots/) using the file names above.
-
 ## Features
 
 - **No sign-up.** Anonymous Firebase Auth gives every install an identity instantly.
@@ -86,8 +78,7 @@ SwipeFit/
 │               └── leaderboard/          #    Podium + live rankings
 ├── docs/
 │   ├── SETUP.md                          # Full Firebase + Android Studio setup
-│   ├── ARCHITECTURE.md                   # Layers, data model, rules, trade-offs
-│   └── screenshots/                      # Images used in this README
+│   └── ARCHITECTURE.md                   # Layers, data model, rules, trade-offs
 ├── gradle/wrapper/                       # Gradle wrapper (pins Gradle 8.9)
 ├── firestore.rules                       # Firestore security rules
 ├── storage.rules                         # Storage security rules
