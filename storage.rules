@@ -1,0 +1,20 @@
+rules_version = '2';
+
+// Outfit photos live at groups/{groupId}/outfits/{outfitId}.jpg
+// Only members of the group (checked against Firestore) may upload or read them.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /groups/{gid}/outfits/{fileName} {
+      allow read: if request.auth != null
+        && firestore.exists(/databases/(default)/documents/groups/$(gid)/members/$(request.auth.uid));
+
+      allow create: if request.auth != null
+        && firestore.exists(/databases/(default)/documents/groups/$(gid)/members/$(request.auth.uid))
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+
+      allow update, delete: if false;
+    }
+  }
+}

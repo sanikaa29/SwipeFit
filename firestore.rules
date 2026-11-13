@@ -1,0 +1,104 @@
+rules_version = '2';
+
+// SwipeFit Firestore rules
+//
+// Data layout:
+//   users/{uid}                              profile (display name)
+//   groups/{code}                            group; the document ID is the 6-char invite code
+//   groups/{code}/members/{uid}              membership (existence of this doc = "is a member")
+//   groups/{code}/outfits/{outfitId}         outfit
+//   groups/{code}/votes/{outfitId_uid}       ONE vote per user per outfit (deterministic ID)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(gid) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/groups/$(gid)/members/$(request.auth.uid));
+    }
+
+    function validText(value, minLen, maxLen) {
+      return value is string && value.size() >= minLen && value.size() <= maxLen;
+    }
+
+    // ---------- users ----------
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn()
+        && request.auth.uid == uid
+        && validText(request.resource.data.displayName, 1, 30);
+      allow delete: if false;
+    }
+
+    // ---------- groups ----------
+    match /groups/{gid} {
+      // Joining requires reading a group by its code BEFORE being a member, so single-document
+      // "get" is allowed for signed-in users. Listing/browsing all groups is not.
+      allow get: if signedIn();
+      allow list: if false;
+
+      allow create: if signedIn()
+        && gid.matches('[A-HJ-NP-Z2-9]{6}')
+        && request.resource.data.keys().hasOnly(['name', 'inviteCode', 'ownerId', 'createdAt'])
+        && validText(request.resource.data.name, 1, 40)
+        && request.resource.data.inviteCode == gid
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+
+      // ---------- members ----------
+      match /members/{memberId} {
+        allow get: if signedIn() && (memberId == request.auth.uid || isMember(gid));
+        allow list: if isMember(gid);
+
+        // You can only add YOURSELF, and only to a group that exists.
+        allow create: if signedIn()
+          && memberId == request.auth.uid
+          && exists(/databases/$(database)/documents/groups/$(gid))
+          && request.resource.data.keys().hasOnly(['userId', 'displayName', 'joinedAt'])
+          && request.resource.data.userId == request.auth.uid
+          && validText(request.resource.data.displayName, 1, 30)
+          && request.resource.data.joinedAt == request.time;
+        allow update, delete: if false;
+      }
+
+      // ---------- outfits ----------
+      match /outfits/{outfitId} {
+        allow read: if isMember(gid);
+
+        allow create: if isMember(gid)
+          && request.resource.data.keys().hasOnly(['name', 'imageUrl', 'storagePath', 'uploaderId', 'groupId', 'createdAt'])
+          && validText(request.resource.data.name, 1, 40)
+          && validText(request.resource.data.imageUrl, 1, 2000)
+          && request.resource.data.storagePath is string
+          && request.resource.data.uploaderId == request.auth.uid
+          && request.resource.data.groupId == gid
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+
+      // ---------- votes ----------
+      match /votes/{voteId} {
+        // Members can read the group's votes (needed for the live leaderboard).
+        allow read: if isMember(gid);
+
+        // The document ID MUST be "<outfitId>_<myUid>". Because votes can never be updated or
+        // deleted, a user can cast exactly one vote per outfit, and can never touch anyone else's.
+        allow create: if isMember(gid)
+          && request.resource.data.keys().hasOnly(['userId', 'groupId', 'outfitId', 'vote', 'createdAt'])
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.groupId == gid
+          && request.resource.data.outfitId is string
+          && voteId == request.resource.data.outfitId + '_' + request.auth.uid
+          && request.resource.data.vote in [0, 1]
+          && request.resource.data.createdAt == request.time
+          && exists(/databases/$(database)/documents/groups/$(gid)/outfits/$(request.resource.data.outfitId));
+        allow update, delete: if false;
+      }
+    }
+  }
+}

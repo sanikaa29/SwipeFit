@@ -1,0 +1,6 @@
+<resources>
+    <!-- Window theme shown before Compose draws (and behind it). Compose handles all real styling. -->
+    <style name="Theme.SwipeFit" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>
