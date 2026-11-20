@@ -1,6 +1,6 @@
 <div align="center">
 
-# ❤️ SwipeFit
+# SwipeFit
 
 **Swipe. Vote. Rank the fits.**
 
